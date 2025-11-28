@@ -1,0 +1,23 @@
+{
+  "name": "loaninneed",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "Backend",
+    "lin-frontend"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces",
+    "format": "npm run format --workspaces",
+    "lint:backend": "cd Backend && npm run lint",
+    "lint:frontend": "cd lin-frontend && npm run lint",
+    "format:backend": "cd Backend && npm run format",
+    "format:frontend": "cd lin-frontend && npm run format",
+    "sonar": "sonar-scanner"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
+    "sonarqube-scanner": "^4.3.2"
+  }
+}
