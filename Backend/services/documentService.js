@@ -59,29 +59,50 @@ class DocumentVerificationService {
   }
 
   /**
-   * Store file in Supabase + Save metadata in DB
+   * Store file in Local File System + Save metadata in DB
    */
-  async storeFile(file, userId, filePath, type, tx) {
-    const fileBuffer = await fs.readFile(file.path);
+  async storeFile(file, userId, fileDirName, type, tx) {
+    // Fetch User to get Name for folder structure
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, customUserId: true },
+    });
 
-    const { error: uploadError } = await supabase.storage
-      .from(process.env.SUPABASE_BUCKET)
-      .upload(filePath, fileBuffer);
+    const userName = user?.name ? user.name.replace(/\s+/g, "_") : "Unknown_User";
+    const userFolder = `${userName}_${userId}`;
 
-    if (uploadError) throw new BadRequestError(uploadError.message);
+    // Construct Target Directory: uploads/[Document Type]/[User Name + User ID]/
+    // Note: fileDirName passed from submitDocuments is like "KycDocs/bank-statements/..." 
+    // We will override this structure to match the specific requirement:
+    // [Upload Root]/[Document Name]/[User Name + User ID]/[File]
 
-    const { data: urlData } = supabase.storage
-      .from(process.env.SUPABASE_BUCKET)
-      .getPublicUrl(filePath);
+    let documentTypeFolder = "Others";
+    if (type === "BANK_STATEMENT") documentTypeFolder = "BankStatements";
+    else if (type === "PAY_SLIP") documentTypeFolder = "SalarySlips";
+    else if (type === "PHOTO") documentTypeFolder = "Selfies";
 
+    const targetDir = `uploads/${documentTypeFolder}/${userFolder}`;
+    const targetPath = `${targetDir}/${Date.now()}_${file.originalname}`;
+
+    // Ensure directory exists
+    await fs.mkdir(targetDir, { recursive: true });
+
+    // Move file from temp to target
+    await fs.rename(file.path, targetPath);
+
+    // Calculate Checksum
+    const fileBuffer = await fs.readFile(targetPath);
     const checksum = crypto.createHash("sha256").update(fileBuffer).digest("hex");
+
+    // Construct a local URL or relative path to store
+    const fileUrl = targetPath; // For local storage, we just store the path
 
     const document = await UserDocumentModel.createDocument(
       userId,
       {
         fileName: file.originalname,
-        filePath,
-        fileUrl: urlData.publicUrl,
+        filePath: targetPath,
+        fileUrl: fileUrl,
         type,
         mimeType: file.mimetype,
         size: file.size,
@@ -91,7 +112,6 @@ class DocumentVerificationService {
       tx
     );
 
-    await fs.unlink(file.path); // ✅ delete temp file
     return document;
   }
 

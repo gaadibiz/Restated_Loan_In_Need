@@ -16,6 +16,4 @@ const verifyPhoneOtp = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
-module.exports = 
-{ requestPhoneOtp, 
-  verifyPhoneOtp };
+module.exports = { requestPhoneOtp, verifyPhoneOtp };

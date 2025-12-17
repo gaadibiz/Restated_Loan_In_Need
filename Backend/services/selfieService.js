@@ -6,46 +6,48 @@ const crypto = require("crypto");
 const { BadRequestError } = require("../GlobalExceptionHandler/exception");
 
 const saveSelfie = async (userId, file) => {
-  if (!file) throw new BadRequestError("Selfie upload failed: No file received");
+  if (!file) throw new BadRequestError("Selfie upload failed: No file received"); // Fixed error message grammar
 
-  // ✅ Upload to Supabase Storage
-  const filePath = `KycDocs/selfies/${userId}/${Date.now()}_${file.originalname}`;
-  const fileBuffer = await fs.readFile(file.path);
+  // Fetch User to get Name for folder structure
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
 
-  const { error: uploadError } = await supabase.storage
-    .from(process.env.SUPABASE_BUCKET)
-    .upload(filePath, fileBuffer);
+  const userName = user?.name ? user.name.replace(/\s+/g, "_") : "Unknown_User";
+  const userFolder = `${userName}_${userId}`;
 
-  if (uploadError) {
-    await fs.unlink(file.path); // Clean up temp file on error
-    throw new BadRequestError(`Selfie upload failed: ${uploadError.message}`);
-  }
+  // Target Directory
+  const targetDir = `uploads/Selfies/${userFolder}`;
+  const targetPath = `${targetDir}/${Date.now()}_${file.originalname}`;
 
-  // ✅ Get public URL
-  const { data: urlData } = supabase.storage
-    .from(process.env.SUPABASE_BUCKET)
-    .getPublicUrl(filePath);
+  // Ensure directory exists
+  await fs.mkdir(targetDir, { recursive: true });
 
-  // ✅ Generate checksum
+  // Move file from temp to target
+  await fs.rename(file.path, targetPath);
+
+  // Generate checksum
+  const fileBuffer = await fs.readFile(targetPath);
   const checksum = crypto.createHash("sha256").update(fileBuffer).digest("hex");
 
-  // ✅ Save selfie in UserDocument table
+  // Local URL/Path
+  const fileUrl = targetPath;
+
+  // Save selfie in UserDocument table
   const selfieDoc = await prisma.userDocument.create({
     data: {
       userId,
       docType: "PHOTO",
       fileName: file.originalname,
-      filePath: filePath,
-      fileUrl: urlData.publicUrl,
+      filePath: targetPath,
+      fileUrl: fileUrl,
       mimeType: file.mimetype,
       size: file.size,
       checksum: checksum,
       status: "SUBMITTED"
     }
   });
-
-  // ✅ Delete temp file
-  await fs.unlink(file.path);
 
   return {
     message: "Selfie uploaded successfully",

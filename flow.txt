@@ -1,0 +1,72 @@
+Flow Diagram: Connections and Diagram Guidance
+
+Where this lives
+- This file documents the nodes, edges, payload notes and sequence flows to draw the system architecture diagram for this repository.
+
+1) High-level nodes to include
+- Frontend (Next.js UI)
+- API Routes (Next.js /api routes or client calls to Backend)
+- Backend Container (Express app)
+- Controllers (files in `Backend/controllers`)
+- Services (files in `Backend/services` such as `authService`, `loanService`, `documentService`, `otpService`)
+- Models / Prisma (files in `Backend/models` and `Backend/prisma`)
+- Postgres (database, Prisma schema tables)
+- Supabase Storage (object storage for uploads)
+- Twilio (OTP/SMS external service)
+- Logger / Observability sinks (Loki, Elasticsearch, CloudWatch)
+- Orchestrator / Container runtime (Docker, docker-compose, Kubernetes)
+
+2) Primary edges (what to draw between nodes)
+- Frontend -> API Routes: label with HTTP method + path (e.g. `POST /api/auth/login`, `POST /api/loan/apply`). Annotate whether JWT required.
+- API Route -> Controller: route maps to controller function (e.g. `authController.login`). Show the method name.
+- Controller -> Service: controller delegates business logic to a service (e.g. `authService.verify`, `loanService.createApplication`). Label with called method.
+- Service -> Model / Prisma: service uses model wrappers or `PrismaClient` to read/write DB tables. Show specific table names when relevant (e.g. `User`, `LoanApplication`, `UserDocument`).
+- Service -> Supabase Storage: for uploads, the service stores binary files in Supabase (SUPABASE_BUCKET). Show file metadata flow (filename, content-type, storage path).
+- Service -> Twilio: OTP sending/verification uses Twilio API. Label with secret env var names (TWILIO_*) and note external network call.
+- Backend -> Logger Sinks: backend emits logs to configured sinks (LOKI_URL, ELASTICSEARCH_NODE). Represent as Backend -> Logger -> External sink.
+- Orchestrator -> Backend container: show healthcheck probe from orchestrator/load balancer to `/` (or configured endpoint) as a special edge.
+
+3) File upload / document verification flow (detailed)
+- Frontend: user chooses file(s) and submits →
+- Frontend -> `POST /api/documents/upload`: request with multipart/form-data (file fields like `document`, `selfie`) →
+- `uploadMiddleware` (Multer) processes file → temporary file available to `documentController` →
+- `documentService.uploadToSupabase` uploads binary to Supabase & returns public/private URL or object reference →
+- `documentService` creates `UserDocument` record in Postgres via Prisma (linking URL, status, timestamps) →
+- Optional: `documentService` triggers verification workflows (call to `selfieService` or external provider) → update `UserDocumentStatus` / verification tables.
+
+4) Auth / JWT flow
+- `POST /api/auth/login` or `POST /api/auth/signup` → `authController` → `authService` verifies credentials → on success issue JWT via `JWT_SECRET` → return token to client.
+- Client stores token (localStorage / cookie) and sends `Authorization: Bearer <token>` on protected requests.
+- `authMiddleware` on backend validates token and extracts user id → controller receives authenticated user context.
+
+5) OTP flow (Twilio)
+- `POST /api/otp/send` → `otpController` → `otpService.sendOtp` → Twilio API call (uses `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SERVICE_SID`) → Twilio sends SMS to user.
+- `POST /api/otp/verify` → `otpService.verifyOtp` → update `OtpVerification` record in DB.
+
+6) Example sequence: Loan application (numbered)
+1. User fills loan form in Frontend.
+2. Frontend `POST /api/loan/apply` (may include document uploads).
+3. `loanController.createApplication` receives request and invokes `loanService.validateAndCreate`.
+4. `loanService` calls `documentService` for any attachments; files are stored in Supabase and `UserDocument` rows created.
+5. `loanService` writes `LoanApplication` record in Postgres via Prisma.
+6. Response includes application id; background workers or human review may pick up the new record.
+
+7) Security & PII annotations
+- Mark nodes that hold secrets or PII: Backend container (`.env` contains SUPABASE_SERVICE_KEY, DATABASE_URL, JWT_SECRET), Postgres (tables with `aadhaar`, `pan`, `address`, `location`), Supabase (file storage of documents/selfies).
+- On diagram edges that carry PII (e.g. file upload edges or `POST /api/kyc`), add a PII flag and list fields (e.g. `aadhar_number`, `pan_number`, `address_line1`, `lat/lng`, `employment.details`).
+
+8) Observability & deployment notes
+- Dockerfile HEALTHCHECK probes `http://localhost:5000/` (or the configured port). In the diagram show `Orchestrator` performing a `healthcheck` call to the `Backend` container and the health result affecting load balancer state.
+- Show log shipping: Backend -> Logger -> Loki/Elasticsearch/CloudWatch.
+
+9) Diagramming tips & labels
+- Use swimlanes or vertical stacks for Frontend / Backend / External Services / Data Stores.
+- Label edges with: HTTP method + path, payload summary (key PII fields), auth requirement, and whether synchronous or async.
+- For uploads show mime-type (e.g. `image/jpeg`) and max-size if relevant.
+- For each service node include the file path in small text (e.g. `Backend/services/documentService.js`) to aid reviewers.
+
+10) Next steps (optional outputs)
+- If you want a ready-to-use Mermaid flow, say so and I will generate a Mermaid diagram snippet that maps the nodes and key edges above.
+- If you prefer draw.io/diagrams.net JSON, I can generate an importable file with the same structure.
+
+--- End of flow diagram guidance ---
