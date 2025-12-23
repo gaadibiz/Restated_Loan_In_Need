@@ -7,13 +7,12 @@ const serviceSid = process.env.TWILIO_SERVICE_SID;
 const client = twilio(accountSid, authToken); // ✅ Correct constructor call
 
 // Send OTP
-const sendOtp = async (phone) => {
+const sendOtp = async phone => {
   try {
-    const verification = await client.verify.v2.services(serviceSid)
-      .verifications.create({
-        to: phone,
-        channel: 'sms',
-      });
+    const verification = await client.verify.v2.services(serviceSid).verifications.create({
+      to: phone,
+      channel: 'sms',
+    });
     return verification;
   } catch (error) {
     console.error(`Twilio sendOtp error for ${phone}:`, error.message);
@@ -24,7 +23,8 @@ const sendOtp = async (phone) => {
 // Verify OTP
 const verifyOtp = async (phone, code) => {
   try {
-    const verificationCheck = await client.verify.v2.services(serviceSid)
+    const verificationCheck = await client.verify.v2
+      .services(serviceSid)
       .verificationChecks.create({
         to: phone,
         code,

@@ -47,6 +47,8 @@
   "author": "Priyanshu Routh",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.957.0",
+    "@aws-sdk/s3-request-presigner": "^3.957.0",
     "@prisma/client": "^6.16.1",
     "@supabase/supabase-js": "^2.76.1",
     "bcryptjs": "^3.0.2",
@@ -75,5 +77,13 @@
     "prisma": "^6.16.1",
     "sonarqube-scanner": "^4.3.2",
     "supertest": "^7.1.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aerotalk/Restated_Loan_In_Need.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Aerotalk/Restated_Loan_In_Need/issues"
+  },
+  "homepage": "https://github.com/Aerotalk/Restated_Loan_In_Need#readme"
 }

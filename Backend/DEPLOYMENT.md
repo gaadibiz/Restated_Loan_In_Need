@@ -138,6 +138,14 @@ After first deployment, run migrations:
 1. **Via Render Shell:**
    ```bash
    # In Render dashboard, go to your service → Shell
+   1. **Run full validation suite:**
+   ```powershell
+   .\test-runner.ps1
+   ```
+
+2. **Run migrations:**
+   ```bash
+   # In Render dashboard, go to your service → Shell
    npx prisma migrate deploy
    ```
 
@@ -295,6 +303,7 @@ npx prisma migrate deploy
 Before deploying to production:
 
 - [ ] All environment variables set
+- [ ] Run Integrated Tests: `.\test-runner.ps1`
 - [ ] Database migrations run
 - [ ] Prisma Client generated
 - [ ] Health check endpoint working

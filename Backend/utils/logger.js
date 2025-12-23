@@ -31,7 +31,9 @@ const baseLogDir = path.join(__dirname, '..', 'logs');
 const levels = ['error', 'warn', 'info', 'http', 'debug'];
 levels.forEach(level => {
   const dir = path.join(baseLogDir, level);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 });
 
 // ==============================
@@ -81,15 +83,16 @@ const fileFormat = format.combine(
 // ==============================
 // 4️⃣ Daily File Transports
 // ==============================
-const createDailyTransport = (level) => new transports.DailyRotateFile({
-  filename: path.join(baseLogDir, level, `%DATE%.${level}.log`),
-  datePattern: 'YYYY-MM-DD',
-  zippedArchive: true,
-  maxSize: '20m',
-  maxFiles: '30d',
-  level,
-  format: fileFormat,
-});
+const createDailyTransport = level =>
+  new transports.DailyRotateFile({
+    filename: path.join(baseLogDir, level, `%DATE%.${level}.log`),
+    datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
+    maxSize: '20m',
+    maxFiles: '30d',
+    level,
+    format: fileFormat,
+  });
 
 // ==============================
 // 5️⃣ Logger Core
@@ -107,7 +110,7 @@ const logger = createLogger({
 // ==============================
 // 6️⃣ Contextual Logger Helper
 // ==============================
-logger.getLogger = (service) => ({
+logger.getLogger = service => ({
   error: (msg, meta = {}) => logger.error(msg, { ...meta, service }),
   warn: (msg, meta = {}) => logger.warn(msg, { ...meta, service }),
   info: (msg, meta = {}) => logger.info(msg, { ...meta, service }),
@@ -137,12 +140,14 @@ logger.httpLogger = () => (req, res, next) => {
 // 8️⃣ Optional Remote Integrations
 // ==============================
 if (process.env.LOKI_URL && LokiTransport) {
-  logger.add(new LokiTransport({
-    host: process.env.LOKI_URL,
-    labels: { app: process.env.APP_NAME || 'MyApp', env: process.env.NODE_ENV || 'development' },
-    json: true,
-    format: fileFormat,
-  }));
+  logger.add(
+    new LokiTransport({
+      host: process.env.LOKI_URL,
+      labels: { app: process.env.APP_NAME || 'MyApp', env: process.env.NODE_ENV || 'development' },
+      json: true,
+      format: fileFormat,
+    })
+  );
 }
 
 if (process.env.ELASTICSEARCH_NODE && ElasticsearchTransport) {
@@ -157,12 +162,14 @@ if (process.env.ELASTICSEARCH_NODE && ElasticsearchTransport) {
 }
 
 if (process.env.CLOUDWATCH_GROUP && CloudWatchTransport) {
-  logger.add(new CloudWatchTransport({
-    logGroupName: process.env.CLOUDWATCH_GROUP,
-    logStreamName: process.env.CLOUDWATCH_STREAM || 'default',
-    awsRegion: process.env.AWS_REGION || 'us-east-1',
-    jsonMessage: true,
-  }));
+  logger.add(
+    new CloudWatchTransport({
+      logGroupName: process.env.CLOUDWATCH_GROUP,
+      logStreamName: process.env.CLOUDWATCH_STREAM || 'default',
+      awsRegion: process.env.AWS_REGION || 'us-east-1',
+      jsonMessage: true,
+    })
+  );
 }
 
 module.exports = logger;
