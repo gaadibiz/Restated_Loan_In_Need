@@ -73,7 +73,7 @@ class DocumentVerificationService {
     let documentTypeFolder = 'Others';
     if (type === 'BANK_STATEMENT') {
       documentTypeFolder = 'BankStatements';
-    else if (type === 'PAY_SLIP') documentTypeFolder = 'SalarySlips';
+    } else if (type === 'PAY_SLIP') documentTypeFolder = 'SalarySlips';
     else if (type === 'PHOTO') documentTypeFolder = 'Selfies';
 
     // Construct file path: [Document Type]/[Username_UserId]/[Timestamp_Filename]
